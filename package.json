@@ -1,0 +1,25 @@
+{
+  "name": "@qingshui/skill",
+  "version": "1.0.0",
+  "description": "青水AI营销创作平台 - 图片生成和视频生成 Skill",
+  "main": "scripts/api.js",
+  "bin": {
+    "qingshui-skill": "./scripts/install.js",
+    "qingshui": "./scripts/api.js"
+  },
+  "files": [
+    "SKILL.md",
+    "README.md",
+    "docs/",
+    "scripts/"
+  ],
+  "keywords": ["skill", "ai", "image-generation", "video-generation", "qingshui"],
+  "license": "MIT",
+  "engines": {
+    "node": ">=16"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/noteworthy/qingshui-skill"
+  }
+}
