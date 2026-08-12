@@ -31,7 +31,7 @@ description: 青水AI营销创作平台 - 提供图片生成和视频生成的AI
 /qingshui image "一只可爱的布偶猫坐在窗台上，阳光洒落" --model gemini-3.1-flash-image-preview
 
 # 生成视频
-/qingshui video "海浪轻轻拍打沙滩,夕阳缓缓落下" --model kling-video-o1 --duration 5
+/qingshui video "海浪轻轻拍打沙滩,夕阳缓缓落下" --model Doubao-Seedance-2.0 --duration 5
 
 # 查询任务状态
 /qingshui status <task_id>
@@ -50,7 +50,7 @@ description: 青水AI营销创作平台 - 提供图片生成和视频生成的AI
 **参数：**
 - `prompt` (必需)：图片描述文本
 - `--model`：模型名称，默认 `gemini-3.1-flash-image-preview`
-  - 可选：`gemini-3.1-flash-image-preview`, `gpt-image-2`, `Doubao-Seedream-4.5`, `kling-image-o1`
+  - 可选：`gemini-3.1-flash-image-preview`, `gpt-image-2`, `Doubao-Seedream-4.5`, `Doubao-Seedream-5.0-lite`
 - `--count`：生成数量(1-4)，默认 1
 - `--aspect-ratio`：宽高比，默认 `16:9`
   - 可选：`1:1`, `16:9`, `9:16`, `4:3`, `3:4`
@@ -75,8 +75,8 @@ description: 青水AI营销创作平台 - 提供图片生成和视频生成的AI
 
 **参数：**
 - `prompt` (必需)：视频描述文本
-- `--model`：模型名称，默认 `kling-video-o1`
-  - 可选：`kling-video-o1`, `Doubao-Seedance-2.0`, `jimeng-video-30-720p`
+- `--model`：模型名称，默认 `Doubao-Seedance-2.0`
+  - 可选：`Doubao-Seedance-2.0`, `Doubao-Seedance-2.0-mini`, `Doubao-Seedance-1.5-pro`
 - `--duration`：视频时长(秒，1-10)，默认 5
 - `--aspect-ratio`：宽高比，默认 `16:9`
   - 可选：`1:1`, `16:9`, `9:16`

@@ -44,13 +44,12 @@ export QINGSHUI_BASE_URL=https://qingshui.hqqt.com
 - `gemini-3.1-flash-image-preview` (默认)
 - `gpt-image-2`
 - `Doubao-Seedream-4.5`
-- `kling-image-o1`
+- `Doubao-Seedream-5.0-lite`
 
 ### 视频生成
-- `kling-video-o1` (默认)
-- `Doubao-Seedance-2.0`
-- `jimeng-video-30-720p`
-- `jimeng-video-30-1080p`
+- `Doubao-Seedance-2.0` (默认)
+- `Doubao-Seedance-2.0-mini`
+- `Doubao-Seedance-1.5-pro`
 
 ## License
 

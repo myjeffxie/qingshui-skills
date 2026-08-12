@@ -63,7 +63,7 @@ async function generateImage(prompt, options = {}) {
 }
 
 async function generateVideo(prompt, options = {}) {
-  const { model = 'kling-video-o1', duration = 5, aspectRatio = '16:9', resolution = '720p', referenceImage = '' } = options;
+  const { model = 'Doubao-Seedance-2.0', duration = 5, aspectRatio = '16:9', resolution = '720p', referenceImage = '' } = options;
   console.log(`🎬 提交视频生成: "${prompt.substring(0, 80)}${prompt.length > 80 ? '...' : ''}"`);
   const result = await apiRequest('POST', '/api/v1/videos/generate', {
     prompt, model, duration, aspect_ratio: aspectRatio, resolution, reference_image: referenceImage,
