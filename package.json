@@ -1,6 +1,6 @@
 {
   "name": "@qingshuiai/skill",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "青水AI营销创作平台 - 图片生成和视频生成 Skill",
   "main": "scripts/api.js",
   "bin": {
