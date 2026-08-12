@@ -1,5 +1,5 @@
 {
-  "name": "@qingshui/skill",
+  "name": "@qingshuiai/skill",
   "version": "1.0.0",
   "description": "青水AI营销创作平台 - 图片生成和视频生成 Skill",
   "main": "scripts/api.js",
@@ -20,6 +20,6 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/noteworthy/qingshui-skill"
+    "url": "https://github.com/myjeffxie/qingshui-skills"
   }
 }

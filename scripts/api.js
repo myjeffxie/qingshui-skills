@@ -78,8 +78,11 @@ async function generateVideo(prompt, options = {}) {
 async function queryTask(taskId, taskType = 'image') {
   const endpoint = taskType === 'video' ? `/api/v1/videos/${taskId}` : `/api/v1/images/${taskId}`;
   const result = await apiRequest('GET', endpoint);
+  if (result.status === 200 && result.data.success) return result.data.task;
+  throw new Error(`查询失败: ${result.data.error || 'HTTP ' + result.status}`);
+}
 
-async function waitForTask(taskId, taskType = 'image', maxWaitMs = 300000) {
+async function waitForTask(taskId, taskType = 'image', maxWaitMs = 600000) {
   const startTime = Date.now();
   const pollInterval = 3000;
   let dots = 0;
@@ -102,6 +105,28 @@ async function waitForTask(taskId, taskType = 'image', maxWaitMs = 300000) {
   throw new Error(`任务等待超时 (${maxWaitMs / 1000}秒)`);
 }
 
+function extractPrompt(args) {
+  // 检查是否通过 --prompt 显式指定
+  const promptIdx = args.indexOf('--prompt');
+  if (promptIdx >= 0 && promptIdx + 1 < args.length) {
+    return args[promptIdx + 1];
+  }
+  // 没有 --prompt 时：收集非选项的非参数值部分作为 prompt
+  // 正确跳过每个 --key 及其对应的 value
+  const result = [];
+  for (let i = 0; i < args.length; i++) {
+    if (args[i].startsWith('--')) {
+      // 跳过参数名
+      if (i + 1 < args.length && !args[i + 1].startsWith('--')) {
+        i++; // 也跳过参数值
+      }
+    } else {
+      result.push(args[i]);
+    }
+  }
+  return result.join(' ');
+}
+
 function parseOptions(args) {
   const result = {};
   for (let i = 0; i < args.length; i++) {
@@ -121,13 +146,12 @@ async function main() {
 
   switch (command) {
     case 'image': {
-      const promptIdx = args.indexOf('--prompt');
-      const prompt = promptIdx >= 0 ? args[promptIdx + 1] : args.slice(1).filter(a => !a.startsWith('--')).join(' ');
+      const prompt = extractPrompt(args.slice(1));
       if (!prompt) { console.error('用法: node api.js image --prompt "描述" [选项]'); process.exit(1); }
       const options = parseOptions(args.slice(1));
       try {
         const r = await generateImage(prompt, options);
-        const t = await waitForTask(r.task_id, 'image', 120000);
+        const t = await waitForTask(r.task_id, 'image', 600000);
         if (t.result && t.result.images) {
           console.log('\n📷 生成的图片:');
           t.result.images.forEach((url, i) => console.log(`  ${i + 1}. ${url}`));
@@ -136,13 +160,12 @@ async function main() {
       break;
     }
     case 'video': {
-      const promptIdx = args.indexOf('--prompt');
-      const prompt = promptIdx >= 0 ? args[promptIdx + 1] : args.slice(1).filter(a => !a.startsWith('--')).join(' ');
+      const prompt = extractPrompt(args.slice(1));
       if (!prompt) { console.error('用法: node api.js video --prompt "描述" [选项]'); process.exit(1); }
       const options = parseOptions(args.slice(1));
       try {
         const r = await generateVideo(prompt, options);
-        const t = await waitForTask(r.task_id, 'video', 300000);
+        const t = await waitForTask(r.task_id, 'video', 600000);
         if (t.result && t.result.video_url) console.log(`\n🎬 视频: ${t.result.video_url}`);
       } catch (e) { console.error(`\n❌ ${e.message}`); process.exit(1); }
       break;
@@ -170,6 +193,3 @@ async function main() {
 }
 
 main();
-  if (result.status === 200 && result.data.success) return result.data.task;
-  throw new Error(`查询失败: ${result.data.error || 'HTTP ' + result.status}`);
-}

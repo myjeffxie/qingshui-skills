@@ -7,7 +7,7 @@
 ### 方式一：npx 一键安装（推荐）
 
 ```bash
-npx @qingshui/skill
+npx @qingshuiai/skill
 ```
 
 安装向导会引导你配置 API Key。
