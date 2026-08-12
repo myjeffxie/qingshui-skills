@@ -5,41 +5,59 @@
  */
 
 const https = require('https');
-const http = require('http');
 
 function getConfig() {
   const apiKey = process.env.QINGSHUI_API_KEY || '';
-  const baseUrl = (process.env.QINGSHUI_BASE_URL || 'https://qingshui.hqqt.com').replace(/\/+$/, '');
+  const rawBaseUrl = (process.env.QINGSHUI_BASE_URL || 'https://qingshui.hqqt.com').replace(/\/+$/, '');
+
   if (!apiKey) {
     console.error('❌ 错误：未设置 QINGSHUI_API_KEY 环境变量');
     console.error('请执行: export QINGSHUI_API_KEY=qs-your-key');
     process.exit(1);
   }
-  return { apiKey, baseUrl };
+
+  // 强制 HTTPS
+  const url = new URL(rawBaseUrl);
+  if (url.protocol !== 'https:') {
+    console.error('❌ 安全错误：QINGSHUI_BASE_URL 必须使用 HTTPS 协议');
+    console.error('当前: ' + rawBaseUrl);
+    process.exit(1);
+  }
+
+  // 域名白名单：仅允许 qingshui.hqqt.com 及其子域名
+  const allowedHosts = ['qingshui.hqqt.com'];
+  if (!allowedHosts.some(h => url.hostname === h || url.hostname.endsWith('.' + h))) {
+    console.error('❌ 安全错误：QINGSHUI_BASE_URL 域名不在白名单中');
+    console.error('域名: ' + url.hostname);
+    console.error('允许: ' + allowedHosts.join(', '));
+    process.exit(1);
+  }
+
+  return { apiKey, baseUrl: rawBaseUrl };
 }
 
 function apiRequest(method, path, data = null) {
   const { apiKey, baseUrl } = getConfig();
   const url = new URL(path, baseUrl);
-  const isHttps = url.protocol === 'https:';
-  const transport = isHttps ? https : http;
+  const options = {
+    hostname: url.hostname,
+    port: 443,
+    path: url.pathname,
+    method,
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${apiKey}`,
+      'X-API-Key': apiKey,
+    },
+  };
   return new Promise((resolve, reject) => {
     const body = data ? JSON.stringify(data) : null;
-    const options = {
-      hostname: url.hostname, port: url.port || (isHttps ? 443 : 80),
-      path: url.pathname, method,
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`,
-        'X-API-Key': apiKey,
-      },
-    };
-    const req = transport.request(options, (res) => {
-      let body = '';
-      res.on('data', (chunk) => (body += chunk));
+    const req = https.request(options, (res) => {
+      let chunks = '';
+      res.on('data', (chunk) => (chunks += chunk));
       res.on('end', () => {
-        try { resolve({ status: res.statusCode, data: JSON.parse(body) }); }
-        catch (e) { resolve({ status: res.statusCode, data: { error: body } }); }
+        try { resolve({ status: res.statusCode, data: JSON.parse(chunks) }); }
+        catch (e) { resolve({ status: res.statusCode, data: { error: chunks } }); }
       });
     });
     req.on('error', (err) => reject(err));
