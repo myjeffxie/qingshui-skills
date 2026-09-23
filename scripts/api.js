@@ -81,16 +81,72 @@ async function generateImage(prompt, options = {}) {
 }
 
 async function generateVideo(prompt, options = {}) {
-  const { model = 'Doubao-Seedance-2.0', duration = 5, aspectRatio = '16:9', resolution = '720p', referenceImage = '' } = options;
+  const {
+    model = 'Doubao-Seedance-2.0',
+    duration = 5,
+    aspectRatio = '16:9',
+    resolution = '720p',
+    referenceImage = '',
+    referenceImages = [],
+    image = '',
+    lastFrame = '',
+    grokMode = '',
+    voiceId = '',
+    referenceAudioVoiceIds = [],
+  } = options;
   console.log(`🎬 提交视频生成: "${prompt.substring(0, 80)}${prompt.length > 80 ? '...' : ''}"`);
-  const result = await apiRequest('POST', '/api/v1/videos/generate', {
-    prompt, model, duration, aspect_ratio: aspectRatio, resolution, reference_image: referenceImage,
-  });
+
+  const payload = { prompt, model, duration, aspect_ratio: aspectRatio, resolution };
+  const refs = normalizeList(referenceImages);
+  const legacyRefs = normalizeList(referenceImage);
+  const voiceIds = normalizeList(referenceAudioVoiceIds);
+  if (voiceId) voiceIds.push(String(voiceId));
+
+  if (model === 'grok-imagine-video-1.5') {
+    const mode = grokMode || inferGrokMode({ referenceImages: [...legacyRefs, ...refs], image, lastFrame });
+    payload.grok_mode = mode;
+    if (mode === 'reference-to-video') {
+      if (image || lastFrame) {
+        throw new Error('Grok 参考图模式不能同时传 --image/--last-frame，请改用 --grok-mode first-last-frame');
+      }
+      const allRefs = [...legacyRefs, ...refs];
+      if (allRefs.length > 0) payload.reference_images = uniqueList(allRefs);
+    } else if (mode === 'first-last-frame') {
+      if (refs.length > 0 || legacyRefs.length > 0) {
+        throw new Error('Grok 首尾帧模式不能同时传 --reference/--reference-images，请改用 --grok-mode reference-to-video');
+      }
+      if (image) payload.image = image;
+      if (lastFrame) payload.last_frame = lastFrame;
+    } else if (mode !== 'text-to-video') {
+      throw new Error('Grok --grok-mode 仅支持 text-to-video、reference-to-video、first-last-frame');
+    }
+    if (voiceIds.length > 0) payload.reference_audio_voice_ids = uniqueList(voiceIds);
+  } else if (legacyRefs.length > 0) {
+    payload.reference_image = legacyRefs[0];
+  }
+
+  const result = await apiRequest('POST', '/api/v1/videos/generate', payload);
   if (result.status === 200 && result.data.success) {
     console.log(`✅ 任务已提交: ${result.data.task_id} (消耗 ${result.data.quota_cost} 算力)`);
     return result.data;
   }
   throw new Error(`提交失败: ${result.data.error || 'HTTP ' + result.status}`);
+}
+
+function normalizeList(value) {
+  if (!value) return [];
+  const values = Array.isArray(value) ? value : [value];
+  return values.flatMap(v => String(v).split(',')).map(s => s.trim()).filter(Boolean);
+}
+
+function uniqueList(values) {
+  return [...new Set(values.map(String).filter(Boolean))];
+}
+
+function inferGrokMode({ referenceImages, image, lastFrame }) {
+  if (image || lastFrame) return 'first-last-frame';
+  if (referenceImages && referenceImages.length > 0) return 'reference-to-video';
+  return 'text-to-video';
 }
 
 async function queryTask(taskId, taskType = 'image') {
@@ -152,9 +208,18 @@ function parseOptions(args) {
     if (arg.startsWith('--')) {
       const key = arg.slice(2).replace(/-([a-z])/g, (_, c) => c.toUpperCase());
       const val = args[i + 1] && !args[i + 1].startsWith('--') ? args[++i] : 'true';
-      result[key] = isNaN(val) ? val : Number(val);
+      const parsed = isNaN(val) ? val : Number(val);
+      if (result[key] === undefined) {
+        result[key] = parsed;
+      } else if (Array.isArray(result[key])) {
+        result[key].push(parsed);
+      } else {
+        result[key] = [result[key], parsed];
+      }
     }
   }
+  if (result.reference && result.referenceImage === undefined) result.referenceImage = result.reference;
+  if (result.references && result.referenceImages === undefined) result.referenceImages = result.references;
   return result;
 }
 
@@ -205,6 +270,11 @@ async function main() {
   node api.js image --prompt "提示词" [选项]    生成图片
   node api.js video --prompt "提示词" [选项]    生成视频
   node api.js status <task_id> [--type image]   查询任务
+
+Grok Video 1.5 示例:
+  node api.js video --model grok-imagine-video-1.5 --grok-mode text-to-video --prompt "电影感航拍城市夜景"
+  node api.js video --model grok-imagine-video-1.5 --grok-mode reference-to-video --reference-images "https://example.com/a.jpg,https://example.com/b.jpg" --prompt "保持人物一致，走向镜头"
+  node api.js video --model grok-imagine-video-1.5 --grok-mode first-last-frame --image https://example.com/first.jpg --last-frame https://example.com/last.jpg --prompt "从首帧自然过渡到尾帧"
 
 环境变量: QINGSHUI_API_KEY (必需), QINGSHUI_BASE_URL (可选)`);
   }

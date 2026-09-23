@@ -33,6 +33,9 @@ description: 青水AI营销创作平台 - 提供图片生成和视频生成的AI
 # 生成视频
 /qingshui video "海浪轻轻拍打沙滩,夕阳缓缓落下" --model Doubao-Seedance-2.0 --duration 5
 
+# Grok Video 1.5：参考图生成视频
+/qingshui video "保持人物一致，镜头缓慢推进" --model grok-imagine-video-1.5 --grok-mode reference-to-video --reference-images https://example.com/person.jpg
+
 # 查询任务状态
 /qingshui status <task_id>
 ```
@@ -76,13 +79,26 @@ description: 青水AI营销创作平台 - 提供图片生成和视频生成的AI
 **参数：**
 - `prompt` (必需)：视频描述文本
 - `--model`：模型名称，默认 `Doubao-Seedance-2.0`
-  - 可选：`Doubao-Seedance-2.0`, `Doubao-Seedance-2.0-mini`, `Doubao-Seedance-1.5-pro`
+  - 可选：`Doubao-Seedance-2.0`, `Doubao-Seedance-2.0-mini`, `Doubao-Seedance-1.5-pro`, `grok-imagine-video-1.5`
 - `--duration`：视频时长(秒，1-10)，默认 5
 - `--aspect-ratio`：宽高比，默认 `16:9`
   - 可选：`1:1`, `16:9`, `9:16`
 - `--resolution`：分辨率，默认 `720p`
   - 可选：`720p`, `1080p`
 - `--reference`：参考图片URL（图生视频）
+- `--reference-images`：多参考图URL，逗号分隔；Grok 参考图模式使用
+- `--grok-mode`：Grok Video 1.5 生成模式
+  - `text-to-video`：文生视频，不提交图片素材
+  - `reference-to-video`：参考图生成视频，提交 `reference_images`
+  - `first-last-frame`：首尾帧生成视频，提交 `image` / `last_frame`
+- `--image`：Grok 首尾帧模式的首帧图片URL
+- `--last-frame`：Grok 首尾帧模式的尾帧图片URL
+- `--voice-id`：Grok 参考音频 voice_id（可选）
+- `--reference-audio-voice-ids`：Grok 多个参考音频 voice_id，逗号分隔（可选）
+
+**Grok Video 1.5 说明：**
+- `reference-to-video` 与 `first-last-frame` 互斥，脚本会在本地校验，避免同时提交参考图和首尾帧。
+- 如果未显式传 `--grok-mode`，脚本会根据参数自动推断：有 `--image`/`--last-frame` 为首尾帧，有 `--reference`/`--reference-images` 为参考图，否则为文生视频。
 
 **示例：**
 ```
@@ -94,6 +110,15 @@ description: 青水AI营销创作平台 - 提供图片生成和视频生成的AI
 
 # 图生视频
 /qingshui video "让这张图片动起来" --reference https://example.com/cat.jpg --model Doubao-Seedance-2.0
+
+# Grok 文生视频
+/qingshui video "电影感航拍未来城市夜景，霓虹灯闪烁" --model grok-imagine-video-1.5 --grok-mode text-to-video
+
+# Grok 参考图生成视频（单张或多张参考图）
+/qingshui video "保持人物服装和脸部一致，向镜头微笑走来" --model grok-imagine-video-1.5 --grok-mode reference-to-video --reference-images https://example.com/person.jpg,https://example.com/outfit.jpg
+
+# Grok 首尾帧生成视频（复用现有首尾帧能力）
+/qingshui video "从首帧自然转场到尾帧，动作流畅" --model grok-imagine-video-1.5 --grok-mode first-last-frame --image https://example.com/first.jpg --last-frame https://example.com/last.jpg
 ```
 
 **算力消耗：** 每秒约 1-2 算力（因模型而异）。

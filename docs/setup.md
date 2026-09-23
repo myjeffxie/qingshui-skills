@@ -54,4 +54,4 @@ A: 算力是按月分配的。算力会在每月会员日自动重置，也可�
 **Q: 支持哪些模型？**
 A: 
 - 图片：gemini-3.1-flash-image-preview, gpt-image-2, Doubao-Seedream-4.5, kling-image-o1
-- 视频：kling-video-o1, Doubao-Seedance-2.0, jimeng-video-30-720p, jimeng-video-30-1080p
+- 视频：kling-video-o1, Doubao-Seedance-2.0, jimeng-video-30-720p, jimeng-video-30-1080p, grok-imagine-video-1.5
