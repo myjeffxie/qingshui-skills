@@ -53,12 +53,13 @@ description: 青水AI营销创作平台 - 提供图片生成和视频生成的AI
 **参数：**
 - `prompt` (必需)：图片描述文本
 - `--model`：模型名称，默认 `gemini-3.1-flash-image-preview`
-  - 可选：`gemini-3.1-flash-image-preview`, `gpt-image-2`, `Doubao-Seedream-4.5`, `Doubao-Seedream-5.0-lite`
+  - 可选：`gemini-3.1-flash-image-preview`, `gpt-image-2.5-flare` (GG 2.5), `Doubao-Seedream-4.5`, `Doubao-Seedream-5.0-lite`
 - `--count`：生成数量(1-4)，默认 1
 - `--aspect-ratio`：宽高比，默认 `16:9`
   - 可选：`1:1`, `16:9`, `9:16`, `4:3`, `3:4`
 - `--negative-prompt`：负向提示词（不想要的内容）
-- `--reference`：参考图片URL（图生图）
+- `--reference`：参考图片URL（图生图，单张；会提交为 `reference_images`）
+- `--reference-images`：多参考图URL，逗号分隔；也可重复传该参数
 
 **示例：**
 ```
@@ -69,7 +70,13 @@ description: 青水AI营销创作平台 - 提供图片生成和视频生成的AI
 /qingshui image "赛博朋克风格的都市夜景" --aspect-ratio 9:16 --count 2
 
 # 指定模型
-/qingshui image "油画风格的乡村风景" --model gpt-image-2
+/qingshui image "油画风格的乡村风景" --model gpt-image-2.5-flare
+
+# 使用参考图（GG 2.5 会由后端转为 multipart /v1/images/edits）
+/qingshui image "给图中的肥猫戴上眼镜" --model gpt-image-2.5-flare --reference https://example.com/cat.png
+
+# 多参考图（逗号分隔或重复传 --reference-images）
+/qingshui image "融合两张参考图的风格" --model gpt-image-2.5-flare --reference-images https://example.com/a.png,https://example.com/b.png
 ```
 
 **算力消耗：** 每张图片消耗 1 算力。

@@ -67,11 +67,21 @@ function apiRequest(method, path, data = null) {
 }
 
 async function generateImage(prompt, options = {}) {
-  const { model = 'gemini-3.1-flash-image-preview', count = 1, aspectRatio = '16:9', negativePrompt = '', referenceImages = [] } = options;
+  const {
+    model = 'gemini-3.1-flash-image-preview',
+    count = 1,
+    aspectRatio = '16:9',
+    negativePrompt = '',
+    referenceImage = '',
+    referenceImages = [],
+  } = options;
+  const refs = normalizeList(referenceImages);
+  const legacyRefs = normalizeList(referenceImage);
+  const allRefs = uniqueList([...legacyRefs, ...refs]);
   console.log(`🎨 提交图片生成: "${prompt.substring(0, 80)}${prompt.length > 80 ? '...' : ''}"`);
   const result = await apiRequest('POST', '/api/v1/images/generate', {
     prompt, model, image_count: count, aspect_ratio: aspectRatio,
-    negative_prompt: negativePrompt, reference_images: referenceImages,
+    negative_prompt: negativePrompt, reference_images: allRefs,
   });
   if (result.status === 200 && result.data.success) {
     console.log(`✅ 任务已提交: ${result.data.task_id} (消耗 ${result.data.quota_cost} 算力)`);

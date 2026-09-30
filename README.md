@@ -43,7 +43,7 @@ export QINGSHUI_BASE_URL=https://qingshui.hqqt.com
 
 ### 图片生成
 - `gemini-3.1-flash-image-preview` (默认)
-- `gpt-image-2`
+- `gpt-image-2.5-flare` (GG 2.5)
 - `Doubao-Seedream-4.5`
 - `Doubao-Seedream-5.0-lite`
 
@@ -52,6 +52,16 @@ export QINGSHUI_BASE_URL=https://qingshui.hqqt.com
 - `Doubao-Seedance-2.0-mini`
 - `Doubao-Seedance-1.5-pro`
 - `grok-imagine-video-1.5` — 支持文生视频、参考图生成视频、首尾帧生成视频
+
+### 图片参考图用法
+
+```bash
+# 单张参考图；脚本会提交 reference_images，后端会按模型协议处理
+/qingshui image "给图中的肥猫戴上眼镜" --model gpt-image-2.5-flare --reference https://example.com/cat.png
+
+# 多参考图；支持逗号分隔，也可重复传 --reference-images
+/qingshui image "融合两张参考图的风格" --model gpt-image-2.5-flare --reference-images https://example.com/a.png,https://example.com/b.png
+```
 
 ### Grok Video 1.5 用法
 
