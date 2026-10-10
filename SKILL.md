@@ -33,8 +33,8 @@ description: 青水AI营销创作平台 - 提供图片生成和视频生成的AI
 # 生成视频
 /qingshui video "海浪轻轻拍打沙滩,夕阳缓缓落下" --model Doubao-Seedance-2.0 --duration 5
 
-# Grok Video 1.5：参考图生成视频
-/qingshui video "保持人物一致，镜头缓慢推进" --model grok-imagine-video-1.5 --grok-mode reference-to-video --reference-images https://example.com/person.jpg
+# Grok Video 1.5：参考图生成视频（在提示词中用 <IMAGE_0> 指定参考图人物）
+/qingshui video "保持人物形象<IMAGE_0>一致，她面向镜头，用自然的口型说：大家好，欢迎来到今天的课程。表情亲切，微微点头，镜头固定，半身构图" --model grok-imagine-video-1.5 --grok-mode reference-to-video --reference-images https://example.com/person.jpg
 
 # 查询任务状态
 /qingshui status <task_id>
@@ -93,7 +93,7 @@ description: 青水AI营销创作平台 - 提供图片生成和视频生成的AI
 - `--resolution`：分辨率，默认 `720p`
   - 可选：`720p`, `1080p`
 - `--reference`：参考图片URL（图生视频）
-- `--reference-images`：多参考图URL，逗号分隔；Grok 参考图模式使用
+- `--reference-images`：多参考图URL，逗号分隔；Grok `reference-to-video` 模式使用，需在提示词中用 `<IMAGE_0>`/`<IMAGE_1>`… 指代
 - `--grok-mode`：Grok Video 1.5 生成模式
   - `text-to-video`：文生视频，不提交图片素材
   - `reference-to-video`：参考图生成视频，提交 `reference_images`
@@ -106,6 +106,7 @@ description: 青水AI营销创作平台 - 提供图片生成和视频生成的AI
 **Grok Video 1.5 说明：**
 - `reference-to-video` 与 `first-last-frame` 互斥，脚本会在本地校验，避免同时提交参考图和首尾帧。
 - 如果未显式传 `--grok-mode`，脚本会根据参数自动推断：有 `--image`/`--last-frame` 为首尾帧，有 `--reference`/`--reference-images` 为参考图，否则为文生视频。
+- **`reference-to-video` 必须在提示词中用 `<IMAGE_0>` / `<IMAGE_1>` … 显式指定参考图**：按 `--reference-images` 的顺序，第 1 张对应 `<IMAGE_0>`，第 2 张对应 `<IMAGE_1>`，以此类推。若提示词中不用 `<IMAGE_n>` 指代，模型可能忽略参考图、按文字自由生成人物。
 
 **示例：**
 ```
@@ -121,8 +122,11 @@ description: 青水AI营销创作平台 - 提供图片生成和视频生成的AI
 # Grok 文生视频
 /qingshui video "电影感航拍未来城市夜景，霓虹灯闪烁" --model grok-imagine-video-1.5 --grok-mode text-to-video
 
-# Grok 参考图生成视频（单张或多张参考图）
-/qingshui video "保持人物服装和脸部一致，向镜头微笑走来" --model grok-imagine-video-1.5 --grok-mode reference-to-video --reference-images https://example.com/person.jpg,https://example.com/outfit.jpg
+# Grok 参考图生成视频（单张参考图：<IMAGE_0> 指定人物）
+/qingshui video "保持人物形象<IMAGE_0>一致，她面向镜头，用自然的口型说：大家好，欢迎来到今天的课程。表情亲切，微微点头，镜头固定，半身构图" --model grok-imagine-video-1.5 --grok-mode reference-to-video --reference-images https://example.com/person.jpg
+
+# Grok 参考图生成视频（多张参考图：<IMAGE_0> 指人物、<IMAGE_1> 指服装）
+/qingshui video "画面人物来自<IMAGE_0>，身穿<IMAGE_1>中的服装，向镜头微笑走来" --model grok-imagine-video-1.5 --grok-mode reference-to-video --reference-images https://example.com/person.jpg,https://example.com/outfit.jpg
 
 # Grok 首尾帧生成视频（复用现有首尾帧能力）
 /qingshui video "从首帧自然转场到尾帧，动作流畅" --model grok-imagine-video-1.5 --grok-mode first-last-frame --image https://example.com/first.jpg --last-frame https://example.com/last.jpg

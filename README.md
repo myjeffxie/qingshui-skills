@@ -65,12 +65,17 @@ export QINGSHUI_BASE_URL=https://qingshui.hqqt.com
 
 ### Grok Video 1.5 用法
 
+`reference-to-video` 必须在提示词中用 `<IMAGE_0>` / `<IMAGE_1>` … 显式指定参考图：按 `--reference-images` 的顺序，第 1 张对应 `<IMAGE_0>`，第 2 张对应 `<IMAGE_1>`，以此类推。若不用 `<IMAGE_n>` 指代，模型可能忽略参考图、按文字自由生成人物。
+
 ```bash
 # 文生视频
 /qingshui video "电影感城市夜景航拍" --model grok-imagine-video-1.5 --grok-mode text-to-video
 
-# 参考图生成视频；多张图片用逗号分隔，也可重复传 --reference-images
-/qingshui video "保持人物一致，缓慢走向镜头" --model grok-imagine-video-1.5 --grok-mode reference-to-video --reference-images https://example.com/person.jpg,https://example.com/outfit.jpg
+# 参考图生成视频（单张参考图：<IMAGE_0> 指定人物）
+/qingshui video "保持人物形象<IMAGE_0>一致，她面向镜头，用自然的口型说：大家好，欢迎来到今天的课程。表情亲切，微微点头，镜头固定，半身构图" --model grok-imagine-video-1.5 --grok-mode reference-to-video --reference-images https://example.com/person.jpg
+
+# 参考图生成视频（多张参考图：<IMAGE_0> 指人物、<IMAGE_1> 指服装；逗号分隔，也可重复传 --reference-images）
+/qingshui video "画面人物来自<IMAGE_0>，身穿<IMAGE_1>中的服装" --model grok-imagine-video-1.5 --grok-mode reference-to-video --reference-images https://example.com/person.jpg,https://example.com/outfit.jpg
 
 # 首尾帧生成视频；参考图与首尾帧互斥
 /qingshui video "从首帧自然过渡到尾帧" --model grok-imagine-video-1.5 --grok-mode first-last-frame --image https://example.com/first.jpg --last-frame https://example.com/last.jpg
