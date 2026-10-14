@@ -1,6 +1,6 @@
 # 青水 Skill (QINGSHUI)
 
-青水AI营销创作平台 - 图片生成和视频生成 Skill
+青水AI营销创作平台 - 图片生成、视频生成和语音合成（TTS / 声音克隆）Skill
 
 ## 安装
 
@@ -28,6 +28,9 @@ export QINGSHUI_BASE_URL=https://qingshui.hqqt.com
 ```
 /qingshui image "一只可爱的猫咪坐在窗台上" --aspect-ratio 1:1
 /qingshui video "海浪拍打岩石" --duration 5
+/qingshui audio --text "大家好，欢迎来到今天的课程" --model speech-2.8-turbo --emotion happy
+/qingshui voices --gender female
+/qingshui clone-voice --audio ./my_voice.mp3 --name 我的音色 --gender female
 /qingshui video "从首帧自然过渡到尾帧" --model grok-imagine-video-1.5 --grok-mode first-last-frame --image https://example.com/first.jpg --last-frame https://example.com/last.jpg
 /qingshui status <task_id>
 ```
@@ -52,6 +55,13 @@ export QINGSHUI_BASE_URL=https://qingshui.hqqt.com
 - `Doubao-Seedance-2.0-mini`
 - `Doubao-Seedance-1.5-pro`
 - `grok-imagine-video-1.5` — 支持文生视频、参考图生成视频、首尾帧生成视频
+
+### 语音生成（TTS）
+- `speech-2.8-turbo` (默认) — 30 算力/百万字符
+- `speech-2.8-hd` — 52.5 算力/百万字符
+- `speech-2.6-turbo` / `speech-2.6-hd`
+
+支持语速、音量、语调、情绪、样本率、码率、声道、音色调整与音效等参数；支持上传音频样本克隆自定义音色（`clone-voice`），克隆后的 `voice_id` 可直接用于 `audio` 命令。
 
 ### 图片参考图用法
 

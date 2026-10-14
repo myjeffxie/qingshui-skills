@@ -55,3 +55,7 @@ A: 算力是按月分配的。算力会在每月会员日自动重置，也可�
 A: 
 - 图片：gemini-3.1-flash-image-preview, gpt-image-2.5-flare (GG 2.5), Doubao-Seedream-4.5, kling-image-o1
 - 视频：kling-video-o1, Doubao-Seedance-2.0, jimeng-video-30-720p, jimeng-video-30-1080p, grok-imagine-video-1.5
+- 语音：speech-2.8-turbo (默认), speech-2.8-hd, speech-2.6-turbo, speech-2.6-hd；并可上传音频样本克隆自定义音色
+
+**Q: 声音克隆有什么要求？**
+A: 音频样本支持 mp3 / m4a / wav 格式，时长 10 秒 ~ 5 分钟，大小不超过 20MB；克隆得到的 `voice_id` 可直接用于语音合成（`audio` 命令的 `--voice-id`），且仅本人可用。

@@ -1,11 +1,11 @@
 ---
 name: qingshui
-description: 青水AI营销创作平台 - 提供图片生成和视频生成的AI能力。支持通过API Key调用，支持多种模型。
+description: 青水AI营销创作平台 - 提供图片生成、视频生成和语音合成（TTS / 声音克隆）的AI能力。支持通过API Key调用，支持多种模型。
 ---
 
 # SKILL: 青水 (QINGSHUI)
 
-青水 ([https://qingshui.hqqt.com](https://qingshui.hqqt.com)) 是一个AI营销创作平台，提供图片生成和视频生成的AI能力。
+青水 ([https://qingshui.hqqt.com](https://qingshui.hqqt.com)) 是一个AI营销创作平台，提供图片生成、视频生成和语音合成（TTS / 声音克隆）的AI能力。
 
 ## 安全指南
 
@@ -33,6 +33,13 @@ description: 青水AI营销创作平台 - 提供图片生成和视频生成的AI
 # 生成视频
 /qingshui video "海浪轻轻拍打沙滩,夕阳缓缓落下" --model Doubao-Seedance-2.0 --duration 5
 
+# 生成语音（TTS）
+/qingshui audio --text "大家好，欢迎来到今天的课程" --model speech-2.8-turbo --emotion happy
+
+# 查看音色列表 / 克隆音色
+/qingshui voices --gender female
+/qingshui clone-voice --audio ./my_voice.mp3 --name 我的音色 --gender female
+
 # Grok Video 1.5：参考图生成视频（在提示词中用 <IMAGE_0> 指定参考图人物）
 /qingshui video "保持人物形象<IMAGE_0>一致，她面向镜头，用自然的口型说：大家好，欢迎来到今天的课程。表情亲切，微微点头，镜头固定，半身构图" --model grok-imagine-video-1.5 --grok-mode reference-to-video --reference-images https://example.com/person.jpg
 
@@ -46,7 +53,11 @@ description: 青水AI营销创作平台 - 提供图片生成和视频生成的AI
 |--------|------|------|
 | `image` | `/qingshui image "提示词" [选项]` | 提交图片生成任务，异步等待返回结果 |
 | `video` | `/qingshui video "提示词" [选项]` | 提交视频生成任务，异步等待返回结果 |
-| `status` | `/qingshui status <task_id>` | 查询异步任务状态和结果 |
+| `audio` | `/qingshui audio --text "文本" [选项]` | 提交语音合成（TTS）任务，异步等待返回结果 |
+| `voices` | `/qingshui voices [选项]` | 查看可用音色列表（内置 + 本人克隆音色） |
+| `clone-voice` | `/qingshui clone-voice --audio <文件> [选项]` | 上传音频样本克隆音色 |
+| `delete-voice` | `/qingshui delete-voice <voice_id>` | 删除本人克隆的音色 |
+| `status` | `/qingshui status <task_id>` | 查询异步任务状态和结果（`--type image\|video\|audio`） |
 
 ### `image` — 生成图片
 
@@ -134,10 +145,85 @@ description: 青水AI营销创作平台 - 提供图片生成和视频生成的AI
 
 **算力消耗：** 每秒约 1-2 算力（因模型而异）。
 
+### `audio` — 生成语音（TTS）
+
+**参数：**
+- `text` (必需)：待合成文本（最多 50000 字符），用 `--text` 指定，也可直接作为位置参数传入
+- `--model`：TTS 模型，默认 `speech-2.8-turbo`
+  - 可选：`speech-2.8-turbo`, `speech-2.8-hd`, `speech-2.6-turbo`, `speech-2.6-hd`
+- `--voice-id`：音色 ID，默认 `zh_male_M392_conversation_wvae_bigtts`（可用 `voices` 命令查看全部音色）
+- `--format`：输出格式，默认 `mp3`；可选 `mp3`, `wav`, `flac`, `pcm`
+- `--speed`：语速，0.5 ~ 2.0
+- `--vol`：音量，0.1 ~ 10
+- `--pitch`：语调，-12 ~ 12
+- `--emotion`：情绪，可选 `fluent`, `calm`, `happy`, `sad`, `angry`, `fearful`, `disgusted`, `surprised`
+- `--text-normalization`：开启文本规范化（数字、符号读音更自然）
+- `--sample-rate`：采样率，可选 8000 / 16000 / 22050 / 24000 / 32000 / 44100（默认 32000）
+- `--bitrate`：码率，32000 ~ 320000（默认 128000）
+- `--channel`：声道数，1（单声道，默认）或 2（双声道）
+- `--vm-pitch` / `--vm-intensity` / `--vm-timbre`：音色调整，取值 -100 ~ 100
+- `--vm-sound-effects`：音效，可选 `spacious_echo`, `auditorium_echo`, `lofi_telephone`, `robotic`
+
+**示例：**
+```
+# 基础语音合成
+/qingshui audio --text "大家好，欢迎来到今天的课程"
+
+# 指定音色、情绪与语速
+/qingshui audio --text "今天心情特别好" --voice-id zh_female_xxx --emotion happy --speed 1.2
+
+# 高清模型 + 双声道 wav 输出
+/qingshui audio --text "欢迎收听本节目" --model speech-2.8-hd --format wav --channel 2
+```
+
+**算力消耗：** 按文本字符数计费（Turbo 30 算力/百万字符，HD 52.5 算力/百万字符），单次最低 1 算力。
+
+### `voices` — 音色列表
+
+**参数：**
+- `--gender`：按性别筛选，可选 `male` / `female` / `unknown`
+- `--custom-only`：仅显示本人克隆音色
+- `--q`：按名称/描述关键字搜索
+
+**示例：**
+```
+/qingshui voices
+/qingshui voices --gender female --q 客服
+/qingshui voices --custom-only
+```
+
+### `clone-voice` — 克隆音色
+
+**参数：**
+- `--audio` (必需)：音频样本文件路径（本地文件），支持 `mp3` / `m4a` / `wav`，时长 10 秒 ~ 5 分钟，大小 ≤ 20MB
+- `--name`：音色名称（默认取文件名）
+- `--gender`：音色性别，可选 `male` / `female`
+- `--icon`：音色图标文件路径（`png` / `jpg` / `webp` / `gif`，≤ 2MB）
+- `--preview-text`：自定义试听文本
+
+**示例：**
+```
+/qingshui clone-voice --audio ./my_voice.mp3 --name 我的音色 --gender female
+/qingshui clone-voice --audio ./sample.wav --name 客服音色 --icon ./avatar.png --preview-text "您好，很高兴为您服务"
+```
+
+**返回：** `voice_id`，可直接用于 `audio` 命令的 `--voice-id`。
+
+### `delete-voice` — 删除克隆音色
+
+**参数：**
+- `voice_id` (必需)：要删除的音色 ID（仅能删除本人克隆的音色）
+
+**示例：**
+```
+/qingshui delete-voice clone_wodeyinse_1_1730000000000000000
+```
+
 ### `status` — 查询任务状态
 
 **参数：**
-- `task_id`：任务ID（由 image/video 命令返回）
+- `task_id`：任务ID（由 image/video/audio 命令返回）
+- `--type`：任务类型，可选 `image`(默认) / `video` / `audio`
 
 **返回状态：**
 - `pending`：等待处理
@@ -151,12 +237,13 @@ description: 青水AI营销创作平台 - 提供图片生成和视频生成的AI
 2. **解析参数**：根据action类型验证必需参数和可选参数
 3. **提交任务**：调用 `scripts/api.js` 提交生成任务，获取 `task_id`
 4. **轮询等待**：每3秒轮询一次任务状态，直到完成或超时（最长10分钟）
-5. **返回结果**：一旦完成，返回生成的图片/视频URL
+5. **返回结果**：一旦完成，返回生成的图片 / 视频 / 音频URL
 
 ## 错误处理
 
 - `401` — API Key无效或已过期，提示用户在个人中心重新生成
 - `402` — 算力不足，提示用户充值或等待下月重置
+- `403` — 无权使用该音色（该 voice_id 属于其他用户的克隆音色）
 - `500` — 服务器错误，建议稍后重试
 
 ## 获取API Key
