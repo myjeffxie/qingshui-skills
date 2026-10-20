@@ -226,6 +226,8 @@ async function generateAudio(text, options = {}) {
     vmIntensity = 0,
     vmTimbre = 0,
     vmSoundEffects = '',
+    subtitle = false,
+    subtitleType = '',
   } = options;
 
   const payload = { text, model, format };
@@ -242,6 +244,10 @@ async function generateAudio(text, options = {}) {
   if (vmIntensity) payload.vm_intensity = Number(vmIntensity);
   if (vmTimbre) payload.vm_timbre = Number(vmTimbre);
   if (vmSoundEffects) payload.vm_sound_effects = String(vmSoundEffects);
+  if (subtitle === true || subtitle === 'true') {
+    payload.subtitle_enable = true;
+    payload.subtitle_type = subtitleType ? String(subtitleType) : 'sentence';
+  }
 
   console.log(`🎙️ 提交语音合成: "${text.substring(0, 60)}${text.length > 60 ? '...' : ''}"`);
   const result = await apiRequest('POST', '/api/v1/audio/speech', payload);
@@ -422,6 +428,7 @@ async function main() {
         const t = await waitForTask(r.task_id, 'audio', 600000);
         if (t.result) {
           if (t.result.audio_url) console.log(`\n🔊 语音文件: ${t.result.audio_url}`);
+          if (t.result.subtitle_url) console.log(`💬 字幕文件: ${t.result.subtitle_url}`);
           if (t.result.duration) console.log(`   时长: ${Number(t.result.duration).toFixed(1)} 秒`);
           if (t.result.char_count) console.log(`   字符数: ${t.result.char_count}`);
         }
@@ -482,6 +489,7 @@ async function main() {
 语音合成示例:
   node api.js audio --text "欢迎来到今天的课程" --model speech-2.8-turbo
   node api.js audio --text "今天心情特别好" --voice-id zh_female_xxx --emotion happy --speed 1.2
+  node api.js audio --text "字幕同步演示" --subtitle --subtitle-type sentence
   node api.js clone-voice --audio ./my_voice.mp3 --name 我的音色 --gender female
 
 Grok Video 1.5 示例:

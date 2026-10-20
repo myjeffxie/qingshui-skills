@@ -163,6 +163,8 @@ description: 青水AI营销创作平台 - 提供图片生成、视频生成和�
 - `--channel`：声道数，1（单声道，默认）或 2（双声道）
 - `--vm-pitch` / `--vm-intensity` / `--vm-timbre`：音色调整，取值 -100 ~ 100
 - `--vm-sound-effects`：音效，可选 `spacious_echo`, `auditorium_echo`, `lofi_telephone`, `robotic`
+- `--subtitle`：同时生成字幕文件（JSON 格式，含文本与时间戳）
+- `--subtitle-type`：字幕时间戳粒度，可选 `sentence`（句级，默认）或 `word`（词级）
 
 **示例：**
 ```
@@ -174,7 +176,12 @@ description: 青水AI营销创作平台 - 提供图片生成、视频生成和�
 
 # 高清模型 + 双声道 wav 输出
 /qingshui audio --text "欢迎收听本节目" --model speech-2.8-hd --format wav --channel 2
+
+# 生成语音并附带字幕文件
+/qingshui audio --text "大家好，欢迎来到今天的课程" --subtitle --subtitle-type sentence
 ```
+
+**返回：** `audio_url`（语音文件）；开启 `--subtitle` 时额外返回 `subtitle_url`（字幕 JSON 文件，内含逐句/逐词时间戳）。
 
 **算力消耗：** 按文本字符数计费（Turbo 30 算力/百万字符，HD 52.5 算力/百万字符），单次最低 1 算力。
 
@@ -228,7 +235,7 @@ description: 青水AI营销创作平台 - 提供图片生成、视频生成和�
 **返回状态：**
 - `pending`：等待处理
 - `processing`：正在生成（含进度百分比）
-- `completed`：已完成（包含结果URL）
+- `completed`：已完成（图片/视频含结果URL；语音含 `audio_url`、`duration`，开启字幕时另含 `subtitle_url`）
 - `failed`：生成失败（包含错误信息）
 
 ## 执行流程

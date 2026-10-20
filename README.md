@@ -61,7 +61,7 @@ export QINGSHUI_BASE_URL=https://qingshui.hqqt.com
 - `speech-2.8-hd` — 52.5 算力/百万字符
 - `speech-2.6-turbo` / `speech-2.6-hd`
 
-支持语速、音量、语调、情绪、样本率、码率、声道、音色调整与音效等参数；支持上传音频样本克隆自定义音色（`clone-voice`），克隆后的 `voice_id` 可直接用于 `audio` 命令。
+支持语速、音量、语调、情绪、样本率、码率、声道、音色调整与音效等参数；支持生成同步字幕文件（`--subtitle`，句级/词级时间戳）；支持上传音频样本克隆自定义音色（`clone-voice`），克隆后的 `voice_id` 可直接用于 `audio` 命令。
 
 ### 图片参考图用法
 
