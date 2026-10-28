@@ -1,6 +1,6 @@
 # 青水 Skill (QINGSHUI)
 
-青水AI营销创作平台 - 图片生成、视频生成和语音合成（TTS / 声音克隆）Skill
+青水AI营销创作平台 - 图片生成、视频生成、语音合成（TTS / 声音克隆）和静态资源分享（HTML/图片/文档）Skill
 
 ## 安装
 
@@ -31,6 +31,9 @@ export QINGSHUI_BASE_URL=https://qingshui.hqqt.com
 /qingshui audio --text "大家好，欢迎来到今天的课程" --model speech-2.8-turbo --emotion happy
 /qingshui voices --gender female
 /qingshui clone-voice --audio ./my_voice.mp3 --name 我的音色 --gender female
+/qingshui share ./report.html --name 月度报告
+/qingshui assets
+/qingshui unshare <hash>
 /qingshui video "从首帧自然过渡到尾帧" --model grok-imagine-video-1.5 --grok-mode first-last-frame --image https://example.com/first.jpg --last-frame https://example.com/last.jpg
 /qingshui status <task_id>
 ```
@@ -92,6 +95,28 @@ export QINGSHUI_BASE_URL=https://qingshui.hqqt.com
 ```
 
 可选参数：`--voice-id` 或 `--reference-audio-voice-ids id1,id2` 可为 Grok 提供参考音频 voice_id。
+
+## 静态资源分享
+
+```bash
+# HTML 默认自动内联本地 CSS/JS/图片；远程图片/脚本/样式会自动下载后内联
+/qingshui share ./report.html --name 月度报告
+
+# 图片（服务端会重新编码）
+/qingshui share ./poster.png --name 活动海报
+
+# 文档需服务端开启 share.allow_documents，默认关闭；仅作为附件下载
+/qingshui share ./manual.pdf --name 产品手册
+
+# 关闭自动内联 / 禁止脚本 / 不下载远程资源
+/qingshui share ./page.html --no-bundle --no-scripts
+/qingshui share ./page.html --no-fetch
+
+/qingshui assets
+/qingshui unshare <hash>
+```
+
+分享成功后返回 `https://qingshui.hqqt.com/{project_id}/{user_id}/{hash}.{ext}`。HTML 在 CSP sandbox iframe 中运行，脚本无法读取本站 Cookie/存储、跳转顶层或发起网络请求；取消分享后 URL 立即 404。
 
 ## License
 

@@ -19,18 +19,18 @@ export QINGSHUI_API_KEY=qs-your-api-key-here
 export QINGSHUI_BASE_URL=https://qingshui.hqqt.com  # 可选，使用默认值可省略
 ```
 
-### 方式二：Skill目录下的 .env 文件
+### 方式二：Skill 目录下的 .env 文件
 
-在skill目录下创建 `.env` 文件：
+在 skill 目录下创建 `.env` 文件（运行 `qingshui` 命令时自动加载）：
 
 ```
 QINGSHUI_API_KEY=qs-your-api-key-here
 QINGSHUI_BASE_URL=https://qingshui.hqqt.com
 ```
 
-### 方式三：项目根目录的 .env 文件
+### 方式三：运行目录下的 .env 文件
 
-在项目根目录创建 `.env` 文件（与上面的格式相同）。
+在运行命令时所在目录创建 `.env` 文件（格式同上）。两个位置的 `.env` 都会被自动读取（skill 目录优先）；若同名变量已在 shell 中 `export`，环境变量优先。
 
 ## 验证配置
 
@@ -53,9 +53,12 @@ A: 算力是按月分配的。算力会在每月会员日自动重置，也可�
 
 **Q: 支持哪些模型？**
 A: 
-- 图片：gemini-3.1-flash-image-preview, gpt-image-2.5-flare (GG 2.5), Doubao-Seedream-4.5, kling-image-o1
-- 视频：kling-video-o1, Doubao-Seedance-2.0, jimeng-video-30-720p, jimeng-video-30-1080p, grok-imagine-video-1.5
+- 图片：gemini-3.1-flash-image-preview, gpt-image-2.5-flare (GG 2.5), Doubao-Seedream-4.5, Doubao-Seedream-5.0-lite
+- 视频：Doubao-Seedance-2.0 (默认), Doubao-Seedance-2.0-mini, Doubao-Seedance-1.5-pro, grok-imagine-video-1.5
 - 语音：speech-2.8-turbo (默认), speech-2.8-hd, speech-2.6-turbo, speech-2.6-hd；并可上传音频样本克隆自定义音色
 
 **Q: 声音克隆有什么要求？**
 A: 音频样本支持 mp3 / m4a / wav 格式，时长 10 秒 ~ 5 分钟，大小不超过 20MB；克隆得到的 `voice_id` 可直接用于语音合成（`audio` 命令的 `--voice-id`），且仅本人可用。
+
+**Q: 静态资源分享支持哪些文件？**
+A: HTML、PNG/JPEG/GIF/WebP，以及服务端开启 `share.allow_documents` 后的 PDF/DOCX/XLSX/PPTX/TXT/MD/CSV。HTML 默认自动内联本地 CSS/JS/图片，远程图片/脚本/样式会自动下载后内联（`--no-fetch` 关闭）；SVG、iframe 等危险标签仍会被拒绝。文档默认关闭且只作为附件下载。

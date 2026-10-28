@@ -6,7 +6,33 @@
 
 const https = require('https');
 const fs = require('fs');
+const os = require('os');
 const path = require('path');
+const { bundleHTML } = require('./bundle-html');
+
+function loadDotEnv() {
+  // 自动读取 .env：skill 目录优先，其次当前工作目录；真实环境变量优先于 .env
+  const candidates = [path.join(__dirname, '..', '.env'), path.join(process.cwd(), '.env')];
+  const seen = new Set();
+  for (const file of candidates) {
+    if (seen.has(file)) continue;
+    seen.add(file);
+    let text = '';
+    try { text = fs.readFileSync(file, 'utf8'); } catch (e) { continue; }
+    for (const line of text.split(/\r?\n/)) {
+      const t = line.trim();
+      if (!t || t.startsWith('#')) continue;
+      const m = t.match(/^(?:export\s+)?([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*)$/);
+      if (!m) continue;
+      let val = m[2].trim();
+      if ((val.startsWith('"') && val.endsWith('"') && val.length >= 2) ||
+          (val.startsWith("'") && val.endsWith("'") && val.length >= 2)) {
+        val = val.slice(1, -1);
+      }
+      if (!(m[1] in process.env)) process.env[m[1]] = val;
+    }
+  }
+}
 
 function getConfig() {
   const apiKey = process.env.QINGSHUI_API_KEY || '';
@@ -38,12 +64,15 @@ function getConfig() {
   return { apiKey, baseUrl: rawBaseUrl };
 }
 
+const API_TIMEOUT_MS = 30 * 1000;       // JSON API 请求空闲超时
+const UPLOAD_TIMEOUT_MS = 120 * 1000;   // 文件上传空闲超时
+
 function apiRequest(method, path, data = null) {
   const { apiKey, baseUrl } = getConfig();
   const url = new URL(path, baseUrl);
   const options = {
     hostname: url.hostname,
-    port: 443,
+    port: url.port ? Number(url.port) : 443,
     path: url.pathname + url.search,
     method,
     headers: {
@@ -63,6 +92,8 @@ function apiRequest(method, path, data = null) {
       });
     });
     req.on('error', (err) => reject(err));
+    // 空闲超时：长时间无响应时主动中断，而不是永远挂起
+    req.setTimeout(API_TIMEOUT_MS, () => req.destroy(new Error(`请求超时（${API_TIMEOUT_MS / 1000}s 无响应）`)));
     if (body) req.write(body);
     req.end();
   });
@@ -79,13 +110,23 @@ function inferMimeType(filePath) {
     '.jpeg': 'image/jpeg',
     '.webp': 'image/webp',
     '.gif': 'image/gif',
+    '.html': 'text/html',
+    '.htm': 'text/html',
+    '.pdf': 'application/pdf',
+    '.docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    '.xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    '.pptx': 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+    '.txt': 'text/plain',
+    '.md': 'text/markdown',
+    '.csv': 'text/csv',
   };
   return mimeMap[path.extname(filePath).toLowerCase()] || 'application/octet-stream';
 }
 
 // 构造 multipart/form-data 请求体（Node 原生实现，无第三方依赖）
 function buildMultipartBody(fields, files) {
-  const boundary = `----qingshui${Date.now().toString(16)}`;
+  // 时间戳 + 随机数，避免同一毫秒内并发上传时 boundary 撞车
+  const boundary = `----qingshui${Date.now().toString(16)}${Math.random().toString(16).slice(2, 10)}`;
   const chunks = [];
   for (const [key, value] of Object.entries(fields)) {
     if (value === undefined || value === null || value === '') continue;
@@ -107,7 +148,7 @@ function apiUpload(pathname, fields, files) {
   const { body, boundary } = buildMultipartBody(fields, files);
   const options = {
     hostname: url.hostname,
-    port: 443,
+    port: url.port ? Number(url.port) : 443,
     path: url.pathname + url.search,
     method: 'POST',
     headers: {
@@ -127,6 +168,7 @@ function apiUpload(pathname, fields, files) {
       });
     });
     req.on('error', (err) => reject(err));
+    req.setTimeout(UPLOAD_TIMEOUT_MS, () => req.destroy(new Error(`上传超时（${UPLOAD_TIMEOUT_MS / 1000}s 无响应）`)));
     req.write(body);
     req.end();
   });
@@ -296,6 +338,99 @@ async function deleteVoice(voiceId) {
   throw new Error(`删除失败: ${result.data.error || 'HTTP ' + result.status}`);
 }
 
+
+async function shareAsset(filePath, options = {}) {
+  if (!filePath) throw new Error('请指定要分享的文件路径');
+  const abs = path.resolve(filePath);
+  if (!fs.existsSync(abs) || !fs.statSync(abs).isFile()) {
+    throw new Error(`文件不存在: ${filePath}`);
+  }
+  const originalName = path.basename(abs);
+  const ext = path.extname(originalName).toLowerCase().replace(/^\./, '');
+  if (!ext) throw new Error('文件必须有扩展名');
+
+  const isHTML = ext === 'html' || ext === 'htm';
+  const noBundle = options.noBundle === true || options.noBundle === 'true' || options.bundle === false || options.bundle === 'false';
+  let uploadPath = abs;
+  let tempDir = '';
+
+  try {
+    if (isHTML && !noBundle) {
+      const fetchRemote = !(options.noFetch === true || options.noFetch === 'true');
+      console.log(`🧩 正在打包 CSS/JS/图片（本地内联${fetchRemote ? ' + 远程下载' : '，远程引用不下载'}）: ${originalName}`);
+      const html = await bundleHTML(abs, {
+        allowScripts: options.noScripts !== true && options.noScripts !== 'true',
+        fetchRemote,
+      });
+      tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'qingshui-share-'));
+      uploadPath = path.join(tempDir, 'share.html');
+      fs.writeFileSync(uploadPath, html, 'utf8');
+      if (Buffer.byteLength(html, 'utf8') > 10 * 1024 * 1024) {
+        console.log('⚠️  打包后的 HTML 超过 10MB，服务端可能拒绝上传（HTML 上限 10MB）');
+      }
+    }
+
+    const fields = {
+      name: options.name || originalName,
+      extension: ext === 'htm' ? 'html' : ext,
+      allow_scripts: (options.noScripts === true || options.noScripts === 'true') ? '0' : '1',
+    };
+    const files = [{ field: 'file', path: uploadPath, mime: inferMimeType(uploadPath) }];
+    console.log(`📤 上传分享: ${originalName}`);
+    const result = await apiUpload('/api/v1/assets', fields, files);
+    if (result.status !== 201 || !result.data.success) {
+      throw new Error(`分享失败: ${result.data.error || 'HTTP ' + result.status}`);
+    }
+    console.log(`✅ 分享成功: ${result.data.url}`);
+    console.log(`   hash: ${result.data.asset.hash}`);
+    console.log(`   类型: ${result.data.asset.kind} / ${result.data.asset.mime_type}`);
+    if (result.data.asset.kind === 'html') {
+      console.log('   提示：HTML 在沙箱 iframe 中打开；页面内脚本无法读取本站 Cookie/存储。');
+    }
+    (result.data.warnings || []).forEach((w) => console.log(`   ⚠️  ${w}`));
+    return result.data;
+  } finally {
+    if (tempDir) {
+      try { fs.rmSync(tempDir, { recursive: true, force: true }); } catch (e) { /* ignore */ }
+    }
+  }
+}
+
+async function listAssets(options = {}) {
+  const params = new URLSearchParams();
+  if (options.page) params.set('page', String(options.page));
+  if (options.pageSize) params.set('page_size', String(options.pageSize));
+  const query = params.toString();
+  const result = await apiRequest('GET', `/api/v1/assets${query ? '?' + query : ''}`);
+  if (result.status !== 200 || !result.data.success) {
+    throw new Error(`查询失败: ${result.data.error || 'HTTP ' + result.status}`);
+  }
+  const { assets = [], usage, total, page, page_size: pageSize } = result.data;
+  console.log(`\n📦 已分享资源（${total} 个，第 ${page} 页，每页 ${pageSize} 条）:`);
+  if (assets.length === 0) {
+    console.log('  （暂无）');
+  }
+  assets.forEach((a, i) => {
+    console.log(`  ${i + 1}. [${a.kind}] ${a.file_name}  ${a.url}`);
+    console.log(`     hash: ${a.hash}`);
+  });
+  if (usage) {
+    console.log(`\n💾 配额: ${usage.used_bytes}/${usage.max_total_bytes} 字节；今日 ${usage.uploads_today}/${usage.max_uploads_per_day} 次；本小时 ${usage.uploads_this_hour}/${usage.max_uploads_per_hour} 次`);
+  }
+  return result.data;
+}
+
+async function deleteAsset(hash) {
+  if (!hash) throw new Error('请指定要删除的 hash');
+  if (!/^[a-f0-9]{32}$/.test(hash)) throw new Error('hash 必须是 32 位小写十六进制');
+  const result = await apiRequest('DELETE', `/api/v1/assets/${encodeURIComponent(hash)}`);
+  if (result.status !== 200 || !result.data.success) {
+    throw new Error(`取消分享失败: ${result.data.error || 'HTTP ' + result.status}`);
+  }
+  console.log(`✅ 已取消分享: ${hash}`);
+  return result.data;
+}
+
 function normalizeList(value) {
   if (!value) return [];
   const values = Array.isArray(value) ? value : [value];
@@ -326,9 +461,21 @@ async function waitForTask(taskId, taskType = 'image', maxWaitMs = 600000) {
   const startTime = Date.now();
   const pollInterval = 3000;
   let dots = 0;
+  let consecutiveErrors = 0;
   process.stdout.write(`⏳ 等待任务完成 ${taskId} `);
   while (Date.now() - startTime < maxWaitMs) {
-    const task = await queryTask(taskId, taskType);
+    let task;
+    try {
+      task = await queryTask(taskId, taskType);
+      consecutiveErrors = 0;
+    } catch (e) {
+      // 网络抖动容错：连续 10 次查询失败才终止，避免一次请求失败丢掉整个任务
+      consecutiveErrors += 1;
+      if (consecutiveErrors >= 10) throw e;
+      process.stdout.write('!');
+      await new Promise((resolve) => setTimeout(resolve, pollInterval));
+      continue;
+    }
     if (task.status === 'completed') {
       process.stdout.write('\n✅ 任务完成!\n');
       return task;
@@ -338,7 +485,10 @@ async function waitForTask(taskId, taskType = 'image', maxWaitMs = 600000) {
       throw new Error(`任务失败: ${task.error_msg || '未知错误'}`);
     }
     dots = (dots + 1) % 4;
-    process.stdout.write(`\r⏳ 等待中 ${taskId} [${task.status}, ${task.progress}%]${'.'.repeat(dots)}  `);
+    // progress 缺失时不再打印 undefined%
+    const n = task.progress == null ? NaN : Number(task.progress);
+    const pctText = Number.isFinite(n) ? `, ${n}%` : '';
+    process.stdout.write(`\r⏳ 等待中 ${taskId} [${task.status}${pctText}]${'.'.repeat(dots)}  `);
     await new Promise((resolve) => setTimeout(resolve, pollInterval));
   }
   process.stdout.write('\n⏱️ 等待超时\n');
@@ -386,10 +536,21 @@ function parseOptions(args) {
   }
   if (result.reference && result.referenceImage === undefined) result.referenceImage = result.reference;
   if (result.references && result.referenceImages === undefined) result.referenceImages = result.references;
+  // 重复的非列表参数取最后一个值（如 --count 2 --count 3 → 3），
+  // 列表类参数保留数组（可重复传，也可逗号分隔）
+  const listKeys = new Set([
+    'reference', 'references', 'referenceImage', 'referenceImages', 'referenceAudioVoiceIds',
+  ]);
+  for (const key of Object.keys(result)) {
+    if (!listKeys.has(key) && Array.isArray(result[key])) {
+      result[key] = result[key][result[key].length - 1];
+    }
+  }
   return result;
 }
 
 async function main() {
+  loadDotEnv();
   const args = process.argv.slice(2);
   const command = args[0];
 
@@ -464,6 +625,30 @@ async function main() {
       } catch (e) { console.error(`\n❌ ${e.message}`); process.exit(1); }
       break;
     }
+    case 'share': {
+      const file = args[1];
+      if (!file) { console.error('用法: node api.js share <文件> [--name 名称] [--no-bundle] [--no-scripts] [--no-fetch]'); process.exit(1); }
+      const options = parseOptions(args.slice(2));
+      try {
+        await shareAsset(file, options);
+      } catch (e) { console.error(`\n❌ ${e.message}`); process.exit(1); }
+      break;
+    }
+    case 'assets': {
+      const options = parseOptions(args.slice(1));
+      try {
+        await listAssets(options);
+      } catch (e) { console.error(`\n❌ ${e.message}`); process.exit(1); }
+      break;
+    }
+    case 'unshare': {
+      const hash = args[1];
+      if (!hash) { console.error('用法: node api.js unshare <hash>'); process.exit(1); }
+      try {
+        await deleteAsset(hash);
+      } catch (e) { console.error(`\n❌ ${e.message}`); process.exit(1); }
+      break;
+    }
     case 'status': {
       const taskId = args[1];
       if (!taskId) { console.error('用法: node api.js status <task_id> [--type image|video|audio]'); process.exit(1); }
@@ -484,7 +669,19 @@ async function main() {
   node api.js voices [--gender female] [--custom-only]  音色列表
   node api.js clone-voice --audio ./sample.mp3 [选项]  克隆音色
   node api.js delete-voice <voice_id>                  删除克隆音色
+  node api.js share <文件> [--name 名称]               上传分享 HTML/图片/文档
+  node api.js assets [--page 1] [--page-size 20]       查看已分享资源
+  node api.js unshare <hash>                           取消分享
   node api.js status <task_id> [--type image|video|audio]  查询任务
+
+分享示例:
+  node api.js share ./report.html                       自动内联本地 CSS/JS/图片，远程图片/脚本/样式自动下载后内联
+  node api.js share ./poster.png --name 活动海报
+  node api.js share ./manual.pdf --name 产品手册
+  node api.js share ./page.html --no-bundle --no-scripts
+  node api.js share ./page.html --no-fetch              不下载远程资源（遇到远程引用时报错）
+  node api.js assets
+  node api.js unshare 0123456789abcdef0123456789abcdef
 
 语音合成示例:
   node api.js audio --text "欢迎来到今天的课程" --model speech-2.8-turbo

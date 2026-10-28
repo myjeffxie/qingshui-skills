@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * 青水 Skill 安装脚本
- * 用法：npx @qingshui/skill
+ * 用法：npx @qingshuiai/skill
  */
 
 const fs = require('fs');
@@ -63,10 +63,13 @@ async function main() {
     ].join('\n');
 
     if (content.includes(marker)) {
-      content = content.replace(
-        new RegExp(`${marker}[\\s\\S]*?(?=\\n# (?!青水)|$)`, 'm'),
-        newLines.trim()
+      // 整块替换：marker 行 + 其后所有青水配置行（export / 注释掉的 export），
+      // 避免旧配置残留在新块下方导致旧 key 仍然生效。
+      // 用函数返回替换文本，防止 apiKey 中出现 $& 等正则替换特殊序列。
+      const blockRe = new RegExp(
+        `${marker}\\n(?:export QINGSHUI_[A-Z_]+=.*\\n?|# export QINGSHUI_[A-Z_]+=.*\\n?)*`,
       );
+      content = content.replace(blockRe, () => `${newLines.trim()}\n`);
     } else {
       content += newLines;
     }

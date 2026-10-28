@@ -1,6 +1,6 @@
 ---
 name: qingshui
-description: 青水AI营销创作平台 - 提供图片生成、视频生成和语音合成（TTS / 声音克隆）的AI能力。支持通过API Key调用，支持多种模型。
+description: 青水AI营销创作平台 - 提供图片生成、视频生成、语音合成（TTS / 声音克隆）和静态资源分享（HTML/图片/文档）的AI能力。支持通过API Key调用，支持多种模型。
 ---
 
 # SKILL: 青水 (QINGSHUI)
@@ -10,7 +10,7 @@ description: 青水AI营销创作平台 - 提供图片生成、视频生成和�
 ## 安全指南
 
 1. **绝不暴露 API Key**：不要在聊天、代码、日志或命令参数中直接展示完整的API Key（格式为 `qs-xxx...`）。
-2. API Key应在环境变量 `QINGSHUI_API_KEY` 中配置，或通过脚本自动注入。
+2. API Key应在环境变量 `QINGSHUI_API_KEY` 中配置（脚本也会自动读取 skill 目录或当前工作目录的 `.env`，环境变量优先），或通过安装脚本自动注入。
 3. 所有API调用应通过提供的 `api.js` 脚本进行，而不是直接使用 `curl` 或其他HTTP客户端。
 
 ## 配置
@@ -45,6 +45,12 @@ description: 青水AI营销创作平台 - 提供图片生成、视频生成和�
 
 # 查询任务状态
 /qingshui status <task_id>
+
+# 分享静态资源（HTML 会自动内联本地 CSS/JS/图片，远程资源自动下载后内联）
+/qingshui share ./report.html --name 月度报告
+/qingshui share ./poster.png --name 活动海报
+/qingshui assets
+/qingshui unshare <hash>
 ```
 
 ## Actions
@@ -57,6 +63,9 @@ description: 青水AI营销创作平台 - 提供图片生成、视频生成和�
 | `voices` | `/qingshui voices [选项]` | 查看可用音色列表（内置 + 本人克隆音色） |
 | `clone-voice` | `/qingshui clone-voice --audio <文件> [选项]` | 上传音频样本克隆音色 |
 | `delete-voice` | `/qingshui delete-voice <voice_id>` | 删除本人克隆的音色 |
+| `share` | `/qingshui share <文件> [选项]` | 上传 HTML / 图片 / 文档，获得公开分享 URL |
+| `assets` | `/qingshui assets [--page N] [--page-size N]` | 查看本人已分享资源和配额 |
+| `unshare` | `/qingshui unshare <hash>` | 取消分享（公开 URL 立即 404） |
 | `status` | `/qingshui status <task_id>` | 查询异步任务状态和结果（`--type image\|video\|audio`） |
 
 ### `image` — 生成图片
@@ -226,6 +235,61 @@ description: 青水AI营销创作平台 - 提供图片生成、视频生成和�
 /qingshui delete-voice clone_wodeyinse_1_1730000000000000000
 ```
 
+### `share` — 分享静态资源
+
+**支持格式：**
+- HTML：`.html` / `.htm`，默认自动内联本地 CSS/JS/图片，远程图片/脚本/样式自动下载后内联（可用 `--no-bundle` 关闭打包、`--no-fetch` 关闭远程下载）
+- 图片：`.png` / `.jpg` / `.jpeg` / `.gif` / `.webp`（服务端会重新编码）
+- 文档：`.pdf` / `.docx` / `.xlsx` / `.pptx` / `.txt` / `.md` / `.csv`（需服务端开启 `share.allow_documents`，默认关闭；仅作为附件下载）
+
+**参数：**
+- `file` (必需)：本地文件路径
+- `--name`：展示/下载文件名，默认取原文件名
+- `--no-bundle`：HTML 不自动打包内联资源（页面必须已经是单文件，否则服务端会因外部引用返回 422）
+- `--no-scripts`：明确禁止 HTML 内联脚本；默认允许（服务端仍会运行在 CSP sandbox opaque origin 中）
+- `--no-fetch`：不下载远程图片/脚本/样式，遇到远程引用直接报错（默认自动下载并内联）
+
+**示例：**
+```bash
+/qingshui share ./report.html --name 月度报告
+/qingshui share ./poster.png --name 活动海报
+/qingshui share ./manual.pdf --name 产品手册
+/qingshui share ./page.html --no-bundle --no-scripts
+```
+
+**返回：** `url`（公开地址，格式 `https://qingshui.hqqt.com/{project_id}/{user_id}/{hash}.{ext}`）、`hash`、资源元信息、`warnings`。
+
+**说明：**
+- 公开 URL 无需登录，依靠 128 位随机 hash + `noindex` 防止被枚举。
+- HTML 在沙箱 iframe 中展示，脚本不能读取本站 Cookie/localStorage，不能跳转顶层页面，也不能发起网络请求。
+- 本地资源必须位于 HTML 所在目录内（`..` 越界、符号链接越界会被拒绝）；远程图片/脚本/样式默认自动下载并内联为 data URI / 内联脚本（`--no-fetch` 关闭）；`@font-face` 会被剥离（沙箱禁止加载字体）；SVG、iframe/object/embed/video/audio 等标签仍会被服务端拒绝。
+- 服务端默认限制：HTML/图片 10MB、文档 20MB；单用户总空间 500MB、每日 100 次、每小时 30 次（以服务端配置为准）。
+- 取消分享后公开 URL 立即返回 404；磁盘文件会删除。
+
+### `assets` — 查看已分享资源
+
+**参数：**
+- `--page`：页码，默认 1
+- `--page-size`：每页数量，默认 20，最大 100
+
+**示例：**
+```bash
+/qingshui assets
+/qingshui assets --page 2 --page-size 50
+```
+
+**返回：** 资源列表（`hash`、`url`、文件名、类型、大小、创建时间）和当前配额使用量。
+
+### `unshare` — 取消分享
+
+**参数：**
+- `hash` (必需)：`share` 或 `assets` 返回的 32 位 hash
+
+**示例：**
+```bash
+/qingshui unshare 0123456789abcdef0123456789abcdef
+```
+
 ### `status` — 查询任务状态
 
 **参数：**
@@ -243,14 +307,17 @@ description: 青水AI营销创作平台 - 提供图片生成、视频生成和�
 1. **检查配置**：如果首次使用，引导用户设置 `QINGSHUI_API_KEY`
 2. **解析参数**：根据action类型验证必需参数和可选参数
 3. **提交任务**：调用 `scripts/api.js` 提交生成任务，获取 `task_id`
-4. **轮询等待**：每3秒轮询一次任务状态，直到完成或超时（最长10分钟）
-5. **返回结果**：一旦完成，返回生成的图片 / 视频 / 音频URL
+4. **轮询等待**：每3秒轮询一次任务状态，直到完成或超时（最长10分钟）；偶发网络抖动自动重试（连续 10 次查询失败才终止）；`share/assets/unshare` 是同步接口，不需要轮询
+5. **返回结果**：一旦完成，返回生成的图片 / 视频 / 音频URL；`share` 返回公开 URL
 
 ## 错误处理
 
 - `401` — API Key无效或已过期，提示用户在个人中心重新生成
 - `402` — 算力不足，提示用户充值或等待下月重置
-- `403` — 无权使用该音色（该 voice_id 属于其他用户的克隆音色）
+- `403` — 无权使用该音色（该 voice_id 属于其他用户的克隆音色）；或资源分享功能未开启
+- `413` — 上传文件超过服务端大小限制
+- `422` — 内容未通过安全清洗（如 HTML 含外部资源、危险标签、文档含宏/嵌入对象）
+- `429` — 分享配额已用完（存储空间/每日/每小时次数）
 - `500` — 服务器错误，建议稍后重试
 
 ## 获取API Key
