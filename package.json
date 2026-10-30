@@ -1,6 +1,6 @@
 {
   "name": "@qingshuiai/skill",
-  "version": "1.2.1",
+  "version": "1.2.2",
   "description": "青水AI营销创作平台 - 图片生成、视频生成、语音合成（TTS / 声音克隆）和静态资源分享 Skill",
   "main": "scripts/api.js",
   "bin": {
