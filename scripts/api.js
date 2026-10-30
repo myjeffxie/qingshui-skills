@@ -361,6 +361,7 @@ async function shareAsset(filePath, options = {}) {
       const html = await bundleHTML(abs, {
         allowScripts: options.noScripts !== true && options.noScripts !== 'true',
         fetchRemote,
+        keepSvg: options.keepSvg === true || options.keepSvg === 'true',
       });
       tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'qingshui-share-'));
       uploadPath = path.join(tempDir, 'share.html');
@@ -627,7 +628,7 @@ async function main() {
     }
     case 'share': {
       const file = args[1];
-      if (!file) { console.error('用法: node api.js share <文件> [--name 名称] [--no-bundle] [--no-scripts] [--no-fetch]'); process.exit(1); }
+      if (!file) { console.error('用法: node api.js share <文件> [--name 名称] [--no-bundle] [--no-scripts] [--no-fetch] [--keep-svg]'); process.exit(1); }
       const options = parseOptions(args.slice(2));
       try {
         await shareAsset(file, options);

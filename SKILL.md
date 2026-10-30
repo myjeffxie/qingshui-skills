@@ -248,6 +248,7 @@ description: 青水AI营销创作平台 - 提供图片生成、视频生成、�
 - `--no-bundle`：HTML 不自动打包内联资源（页面必须已经是单文件，否则服务端会因外部引用返回 422）
 - `--no-scripts`：明确禁止 HTML 内联脚本；默认允许（服务端仍会运行在 CSP sandbox opaque origin 中）
 - `--no-fetch`：不下载远程图片/脚本/样式，遇到远程引用直接报错（默认自动下载并内联）
+- `--keep-svg`：不把自包含的内联 SVG 转成 data URI 图片，保留原样交由服务端清洗
 
 **示例：**
 ```bash
@@ -262,7 +263,9 @@ description: 青水AI营销创作平台 - 提供图片生成、视频生成、�
 **说明：**
 - 公开 URL 无需登录，依靠 128 位随机 hash + `noindex` 防止被枚举。
 - HTML 在沙箱 iframe 中展示，脚本不能读取本站 Cookie/localStorage，不能跳转顶层页面，也不能发起网络请求。
-- 本地资源必须位于 HTML 所在目录内（`..` 越界、符号链接越界会被拒绝）；远程图片/脚本/样式默认自动下载并内联为 data URI / 内联脚本（`--no-fetch` 关闭）；`@font-face` 会被剥离（沙箱禁止加载字体）；SVG、iframe/object/embed/video/audio 等标签仍会被服务端拒绝。
+- 本地资源必须位于 HTML 所在目录内（`..` 越界、符号链接越界会被拒绝）；远程图片/脚本/样式默认自动下载并内联为 data URI / 内联脚本（`--no-fetch` 关闭）；`@font-face` 会被剥离（沙箱 `font-src 'none'`，连 base64 字体也无法加载）。
+- 内联 SVG 双路径处理：自包含 SVG 自动转为 `data:image/svg+xml` 图片（浏览器保证 img 中的 SVG 不执行脚本，`--keep-svg` 关闭）；依赖 `<use>`/`<symbol>` 的 sprite 保留原样，由服务端白名单清洗（脚本/`foreignObject`/SMIL 动画/外部引用移除，图形保留）。
+- 打包时自动注入 localStorage/sessionStorage 内存垫片（沙箱 iframe 是 opaque origin，直接访问存储会抛 SecurityError 导致页面脚本崩溃；垫片让这类页面可正常交互）。iframe/object/embed/video/audio、`<math>` 等标签仍会被服务端拒绝。
 - 服务端默认限制：HTML/图片 10MB、文档 20MB；单用户总空间 500MB、每日 100 次、每小时 30 次（以服务端配置为准）。
 - 取消分享后公开 URL 立即返回 404；磁盘文件会删除。
 

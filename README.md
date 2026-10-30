@@ -108,9 +108,10 @@ export QINGSHUI_BASE_URL=https://qingshui.hqqt.com
 # 文档需服务端开启 share.allow_documents，默认关闭；仅作为附件下载
 /qingshui share ./manual.pdf --name 产品手册
 
-# 关闭自动内联 / 禁止脚本 / 不下载远程资源
+# 关闭自动内联 / 禁止脚本 / 不下载远程资源 / 保留内联 SVG 原样
 /qingshui share ./page.html --no-bundle --no-scripts
 /qingshui share ./page.html --no-fetch
+/qingshui share ./page.html --keep-svg
 
 /qingshui assets
 /qingshui unshare <hash>
